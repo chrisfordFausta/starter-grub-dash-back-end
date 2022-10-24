@@ -13,11 +13,20 @@ const dishExists = (req, res, next) => {
   const { dishId } = req.params;
   const foundDish = dishes.find((dish) => dish.id == dishId);
   if (foundDish) {
+    req.dishId = dishId
     req.foundDish = foundDish;
     return next();
   }
   next({ status: 404, message: `Dish id not found: ${dishId}` });
 };
+
+const idMatches = (req, res, next) => {
+    const { data: { id } = {} } = req.body
+    if (id == req.dishId) {
+        return next();
+    } 
+    next({status: 400, message: `Dish id does not match route id. Dish: ${id}, Route: ${req.dishId}`})
+}
 
 const bodyDataHas = (propertyName) => {
   return function (req, res, next) {
@@ -39,10 +48,8 @@ const priceGreaterThanZero = (req, res, next) => {
 
 const priceIsANumber = (req, res, next) => {
   const { data: { price } = {} } = req.body;
-  if (!isNaN(price)) {
-    return next();
-  }
-  next({ status: 400, message: `price must be a number: ${price}` });
+  const notANum = isNaN(price)
+notANum = true ? next({ status: 400, message: `price must be a number: ${price}` }) :  next();
 };
 
 //Controllers
@@ -67,7 +74,17 @@ const read = (req, res) => {
   res.json({ data: req.foundDish });
 };
 
-const update = (req, res) => {};
+const update = (req, res) => {
+    const { data: { name, description, price, image_url, id } = {} } = req.body
+    req.foundDish = {
+        id,
+        name,
+        description,
+        price,
+        image_url,
+    }
+    res.json({ data: req.foundDish })
+};
 
 module.exports = {
   list,
@@ -82,6 +99,7 @@ module.exports = {
   read: [dishExists, read],
   update: [
     dishExists,
+    idMatches,
     bodyDataHas("name"),
     bodyDataHas("image_url"),
     bodyDataHas("description"),
