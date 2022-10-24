@@ -8,10 +8,11 @@ const nextId = require("../utils/nextId");
 
 // TODO: Implement the /dishes handlers needed to make the tests pass
 
-const dishExist = (req, res, next) => {
+//Middleware
+const dishExists = (req, res, next) => {
   const { dishId } = req.params;
   const foundDish = dishes.find((dish) => dish.id == dishId);
-  if (dishId) {
+  if (foundDish) {
     req.foundDish = foundDish;
     return next();
   }
@@ -22,28 +23,71 @@ const bodyDataHas = (propertyName) => {
   return function (req, res, next) {
     const { data = {} } = req.body;
     if (data[propertyName]) {
-      req.propertyName = data[propertyName];
       return next();
     }
-    next({ status: 400, message: `Must include a ${propertyName} field` });
+    next({ status: 400, message: `Must include a ${propertyName}` });
   };
 };
 
+const priceGreaterThanZero = (req, res, next) => {
+  const { data: { price } = {} } = req.body;
+  if (price > 0) {
+    return next();
+  }
+  next({ status: 400, message: `price must be greater than zero: ${price}` });
+};
+
+const priceIsANumber = (req, res, next) => {
+  const { data: { price } = {} } = req.body;
+  if (!isNaN(price)) {
+    return next();
+  }
+  next({ status: 400, message: `price must be a number: ${price}` });
+};
+
+//Controllers
 const list = (req, res) => {
-res.json({ data: dishes })
+  res.json({ data: dishes });
 };
 
 const create = (req, res) => {
-res.json({ data: req.foundDish })
+  const { data: { name, description, price, image_url } = {} } = req.body;
+  const newDish = {
+    id: nextId(),
+    name,
+    description,
+    price,
+    image_url,
+  };
+  dishes.push(newDish);
+  res.status(201).json({ data: newDish });
 };
 
-const read = (req, res) => {};
+const read = (req, res) => {
+  res.json({ data: req.foundDish });
+};
 
 const update = (req, res) => {};
 
 module.exports = {
-    list,
+  list,
+  create: [
+    bodyDataHas("name"),
+    bodyDataHas("description"),
+    bodyDataHas("price"),
+    bodyDataHas("image_url"),
+    priceGreaterThanZero,
     create,
-    read,
-    update
-}
+  ],
+  read: [dishExists, read],
+  update: [
+    dishExists,
+    bodyDataHas("name"),
+    bodyDataHas("image_url"),
+    bodyDataHas("description"),
+    bodyDataHas("price"),
+    priceGreaterThanZero,
+    priceIsANumber,
+    update,
+  ],
+};
