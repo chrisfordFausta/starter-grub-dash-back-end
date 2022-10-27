@@ -21,11 +21,11 @@ const dishExists = (req, res, next) => {
 };
 
 const idMatches = (req, res, next) => {
-    const { data: { id } = {} } = req.body
-    if (id == req.dishId) {
+    const { data = {} } = req.body
+    if (!data.id || data.id === req.dishId) {
         return next();
     } 
-    next({status: 400, message: `Dish id does not match route id. Dish: ${id}, Route: ${req.dishId}`})
+    next({status: 400, message: `Dish id does not match route id. Dish: ${data.id}, Route: ${req.dishId}`})
 }
 
 const bodyDataHas = (propertyName) => {
@@ -40,17 +40,13 @@ const bodyDataHas = (propertyName) => {
 
 const priceGreaterThanZero = (req, res, next) => {
   const { data: { price } = {} } = req.body;
-  if (price > 0) {
+  if (price > 0 && typeof(price) === 'number') {
     return next();
   }
-  next({ status: 400, message: `price must be greater than zero: ${price}` });
+  next({ status: 400, message: `price must be an integer that's greater than zero: ${price}` });
 };
 
-const priceIsANumber = (req, res, next) => {
-  const { data: { price } = {} } = req.body;
-  const notANum = isNaN(price)
-notANum = true ? next({ status: 400, message: `price must be a number: ${price}` }) :  next();
-};
+
 
 //Controllers
 const list = (req, res) => {
@@ -76,13 +72,11 @@ const read = (req, res) => {
 
 const update = (req, res) => {
     const { data: { name, description, price, image_url, id } = {} } = req.body
-    req.foundDish = {
-        id,
-        name,
-        description,
-        price,
-        image_url,
-    }
+    req.foundDish.name = name;
+    req.foundDish.description = description;
+    req.foundDish.price = price;
+    req.foundDish.image_url = image_url;
+    req.foundDish.id = id;
     res.json({ data: req.foundDish })
 };
 
@@ -99,13 +93,13 @@ module.exports = {
   read: [dishExists, read],
   update: [
     dishExists,
-    idMatches,
     bodyDataHas("name"),
-    bodyDataHas("image_url"),
     bodyDataHas("description"),
+    bodyDataHas("image_url"),
     bodyDataHas("price"),
     priceGreaterThanZero,
-    priceIsANumber,
+    idMatches,
     update,
   ],
+  dishExists
 };
